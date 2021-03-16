@@ -125,7 +125,7 @@ function signoff_has_submission($user, $cm) {
 }
 
 function signoff_process_submission($data, $user, $cm) {
-    global $DB;
+    global $DB, $CFG;
 
     $update = signoff_has_submission($user,$cm);
 
@@ -148,20 +148,25 @@ function signoff_process_submission($data, $user, $cm) {
         $DB->insert_record('signoff_data', $rec);
     }
 
-    // grb contextual information for notification
+    // grab contextual information for notification
+    $sectionid = 1;
     $signoff = $DB->get_record('signoff', array('id' => $cm->instance), '*', MUST_EXIST);
     $modulecontext = \context_module::instance($cm->id);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $section = $DB->get_record('course_sections', array('id' => $cm->section), '*', MUST_EXIST);
     $coursecontext = \context_course::instance($cm->course);
-    $template = get_string('notify_template', 'signoff', [
+    $link = (new moodle_url('/course/view.php', ['id' => $course->id, 'section' => $section->section]))->out();
+    $template = str_replace('\n', PHP_EOL, get_string('notify_template', 'signoff', [
         'name' => fullname($user,true),
-        'course' => format_string($course->shortname, true, array(
+        'course' => format_string($course->fullname, true, array(
             'context' => $coursecontext,
         )),
+        'section' => $section->name . '',
         'activity' => format_string($signoff->name, true, array(
             'context' => $modulecontext,
-        ))
-    ]);
+        )),
+        'url' => $link
+    ]));
 
     // create a list of users who will be receiving the notification
     $notify = [];

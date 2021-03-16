@@ -65,4 +65,4 @@ $string['signature_template'] = '<div id="signature-pad" class="signature-pad">
   </div>';
 
 $string['notify_subject'] = 'Signoff notification';
-$string['notify_template'] = 'The user {$a->name} has signed off the course {$a->course}, activity {$a->activity}.';
+$string['notify_template'] = 'A user has signed off an activity.\n\nUser: {$a->name} \nCourse: {$a->course} \nSection: {$a->section} \nActivity: {$a->activity} \nUrl: {$a->url} \n';

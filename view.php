@@ -31,10 +31,6 @@ require_once($CFG->libdir . '/datalib.php');
 require_once("$CFG->dirroot/mod/signoff/classes/view_form.php");
 
 $id = optional_param('id', 0, PARAM_INT);        // Course module ID (signoff's id)
-$redirect = optional_param('redirect', 0, PARAM_BOOL);
-$forceview = optional_param('forceview', 0, PARAM_BOOL);
-
-//var_dump($id, $redirect, $forceview);die;
 
 $cm = get_coursemodule_from_id('signoff', $id, 0, false, MUST_EXIST);
 $signoff = $DB->get_record('signoff', array('id' => $cm->instance), '*', MUST_EXIST);
