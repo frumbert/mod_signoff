@@ -25,14 +25,28 @@
  */
 
 require('../../config.php');
+require_once($CFG->dirroot.'/user/renderer.php');
 
 $id = required_param('course', PARAM_INT); // course id
 $instance = optional_param('instance', 0, PARAM_INT); // coursemodule
+$page          = optional_param('page', 0, PARAM_INT);   // active page
+$action        = optional_param('action', 0, PARAM_ALPHAEXT);
+$sortitemid    = optional_param('sortitemid', 0, PARAM_ALPHANUM); // sort by which grade item
+
+
+$graderreportsifirst  = optional_param('sifirst', null, PARAM_NOTAGS);
+$graderreportsilast   = optional_param('silast', null, PARAM_NOTAGS);
+
+
+
 
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
 
 require_course_login($course, true);
 $PAGE->set_pagelayout('incourse');
+
+$context = context_course::instance($course->id);
+require_capability('mod/signoff:viewall', $context);
 
 $params = array(
     'context' => context_course::instance($course->id)
@@ -60,6 +74,38 @@ if (!$sgns = get_all_instances_in_course('signoff', $course)) {
 }
 
 $usesections = course_format_uses_sections($course->format);
+
+
+$report = new mod_signoff_report($course->id, $context, $page, $sortitemid);
+$numusers = $report->get_numusers(true, true);
+
+// make sure separate group does not prevent view
+if ($report->currentgroup == -2) {
+    echo $OUTPUT->heading(get_string("notingroup"));
+    echo $OUTPUT->footer();
+    exit;
+}
+
+// final grades MUST be loaded after the processing
+$report->load_users();
+echo $report->group_selector;
+
+$firstinitial = isset($SESSION->gradereport['filterfirstname']) ? $SESSION->gradereport['filterfirstname'] : '';
+$lastinitial  = isset($SESSION->gradereport['filtersurname']) ? $SESSION->gradereport['filtersurname'] : '';
+$totalusers = $report->get_numusers(true, false);
+$renderer = $PAGE->get_renderer('core_user');
+echo $renderer->user_search($url, $firstinitial, $lastinitial, $numusers, $totalusers, $report->currentgroupname);
+
+
+$studentsperpage = $report->get_students_per_page();
+// Don't use paging if studentsperpage is empty or 0 at course AND site levels
+if (!empty($studentsperpage)) {
+    echo $OUTPUT->paging_bar($numusers, $report->page, $studentsperpage, $report->pbarurl);
+}
+
+$reporthtml = $report->get_grade_table($displayaverages);
+
+
 
 $table = new html_table();
 $table->attributes['class'] = 'generaltable mod_index';

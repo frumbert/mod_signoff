@@ -193,3 +193,181 @@ function signoff_view($url, $course, $cm, $context)
     $completion = new completion_info($course);
     $completion->set_module_viewed($cm);
 }
+
+class mod_signoff_report {
+
+    public function __construct($courseid, $context, $page = 0, $sortitemid = 0) {
+
+    }
+
+
+   /**
+     * Given the name of a user preference (without grade_report_ prefix), locally saves then returns
+     * the value of that preference. If the preference has already been fetched before,
+     * the saved value is returned. If the preference is not set at the User level, the $CFG equivalent
+     * is given (site default).
+     * Can be called statically, but then doesn't benefit from caching
+     * @param string $pref The name of the preference (do not include the grade_report_ prefix)
+     * @param int $objectid An optional itemid or categoryid to check for a more fine-grained preference
+     * @return mixed The value of the preference
+     */
+    public function get_pref($pref, $objectid=null) {
+        global $CFG;
+        $fullprefname = 'mod_signoff_' . $pref;
+        $shortprefname = 'signoff_' . $pref;
+
+        $retval = null;
+
+        if (!isset($this) OR get_class($this) != 'mod_signoff') {
+            if (!empty($objectid)) {
+                $retval = get_user_preferences($fullprefname . $objectid, self::get_pref($pref));
+            } else if (isset($CFG->$fullprefname)) {
+                $retval = get_user_preferences($fullprefname, $CFG->$fullprefname);
+            } else if (isset($CFG->$shortprefname)) {
+                $retval = get_user_preferences($fullprefname, $CFG->$shortprefname);
+            } else {
+                $retval = null;
+            }
+        } else {
+            if (empty($this->prefs[$pref.$objectid])) {
+
+                if (!empty($objectid)) {
+                    $retval = get_user_preferences($fullprefname . $objectid);
+                    if (empty($retval)) {
+                        // No item pref found, we are returning the global preference
+                        $retval = $this->get_pref($pref);
+                        $objectid = null;
+                    }
+                } else {
+                    $retval = get_user_preferences($fullprefname, $CFG->$fullprefname);
+                }
+                $this->prefs[$pref.$objectid] = $retval;
+            } else {
+                $retval = $this->prefs[$pref.$objectid];
+            }
+        }
+
+        return $retval;
+    }
+
+    /**
+     * Uses set_user_preferences() to update the value of a user preference. If 'default' is given as the value,
+     * the preference will be removed in favour of a higher-level preference.
+     * @param string $pref The name of the preference.
+     * @param mixed $pref_value The value of the preference.
+     * @param int $itemid An optional itemid to which the preference will be assigned
+     * @return bool Success or failure.
+     */
+    public function set_pref($pref, $pref_value='default', $itemid=null) {
+        $fullprefname = 'mod_signoff' . $pref;
+        if ($pref_value == 'default') {
+            return unset_user_preference($fullprefname.$itemid);
+        } else {
+            return set_user_preference($fullprefname.$itemid, $pref_value);
+        }
+    }
+
+    /**
+     * Fetches and returns a count of all the users that will be shown on this page.
+     * @param boolean $groups include groups limit
+     * @param boolean $users include users limit - default false, used for searching purposes
+     * @return int Count of users
+     */
+    public function get_numusers($groups = true, $users = false) {
+        global $CFG, $DB;
+        $userwheresql = "";
+        $groupsql      = "";
+        $groupwheresql = "";
+
+        // Limit to users with a gradeable role.
+        list($gradebookrolessql, $gradebookrolesparams) = $DB->get_in_or_equal(explode(',', $this->gradebookroles), SQL_PARAMS_NAMED, 'grbr0');
+
+        // Limit to users with an active enrollment.
+        list($enrolledsql, $enrolledparams) = get_enrolled_sql($this->context);
+
+        // We want to query both the current context and parent contexts.
+        list($relatedctxsql, $relatedctxparams) = $DB->get_in_or_equal($this->context->get_parent_context_ids(true), SQL_PARAMS_NAMED, 'relatedctx');
+
+        $params = array_merge($gradebookrolesparams, $enrolledparams, $relatedctxparams);
+
+        if ($users) {
+            $userwheresql = $this->userwheresql;
+            $params       = array_merge($params, $this->userwheresql_params);
+        }
+
+        if ($groups) {
+            $groupsql      = $this->groupsql;
+            $groupwheresql = $this->groupwheresql;
+            $params        = array_merge($params, $this->groupwheresql_params);
+        }
+
+        $sql = "SELECT DISTINCT u.id
+                       FROM {user} u
+                       JOIN ($enrolledsql) je
+                            ON je.id = u.id
+                       JOIN {role_assignments} ra
+                            ON u.id = ra.userid
+                       $groupsql
+                      WHERE ra.roleid $gradebookrolessql
+                            AND u.deleted = 0
+                            $userwheresql
+                            $groupwheresql
+                            AND ra.contextid $relatedctxsql";
+        $selectedusers = $DB->get_records_sql($sql, $params);
+
+        $count = 0;
+        // Check if user's enrolment is active and should be displayed.
+        if (!empty($selectedusers)) {
+            $coursecontext = $this->context->get_course_context(true);
+
+            $defaultgradeshowactiveenrol = !empty($CFG->grade_report_showonlyactiveenrol);
+            $showonlyactiveenrol = get_user_preferences('grade_report_showonlyactiveenrol', $defaultgradeshowactiveenrol);
+            $showonlyactiveenrol = $showonlyactiveenrol || !has_capability('moodle/course:viewsuspendedusers', $coursecontext);
+
+            if ($showonlyactiveenrol) {
+                $useractiveenrolments = get_enrolled_users($coursecontext, '', 0, 'u.id',  null, 0, 0, true);
+            }
+
+            foreach ($selectedusers as $id => $value) {
+                if (!$showonlyactiveenrol || ($showonlyactiveenrol && array_key_exists($id, $useractiveenrolments))) {
+                    $count++;
+                }
+            }
+        }
+        return $count;
+    }
+
+    /**
+     * Sets up this report's user criteria to restrict the selection of users to display.
+     */
+    public function setup_users() {
+        global $SESSION, $DB;
+
+        $this->userwheresql = "";
+        $this->userwheresql_params = array();
+        if (isset($SESSION->gradereport['filterfirstname']) && !empty($SESSION->gradereport['filterfirstname'])) {
+            $this->userwheresql .= ' AND '.$DB->sql_like('u.firstname', ':firstname', false, false);
+            $this->userwheresql_params['firstname'] = $SESSION->gradereport['filterfirstname'].'%';
+        }
+        if (isset($SESSION->gradereport['filtersurname']) && !empty($SESSION->gradereport['filtersurname'])) {
+            $this->userwheresql .= ' AND '.$DB->sql_like('u.lastname', ':lastname', false, false);
+            $this->userwheresql_params['lastname'] = $SESSION->gradereport['filtersurname'].'%';
+        }
+    }
+
+    /**
+     * Returns an arrow icon inside an <a> tag, for the purpose of sorting a column.
+     * @param string $direction
+     * @param moodle_url $sortlink
+     */
+    protected function get_sort_arrow($direction='move', $sortlink=null) {
+        global $OUTPUT;
+        $pix = array('up' => 't/sort_desc', 'down' => 't/sort_asc', 'move' => 't/sort');
+        $matrix = array('up' => 'desc', 'down' => 'asc', 'move' => 'desc');
+        $strsort = $this->get_lang_string('sort' . $matrix[$direction]);
+
+        $arrow = $OUTPUT->pix_icon($pix[$direction], $strsort, '', array('class' => 'sorticon'));
+        return html_writer::link($sortlink, $arrow, array('title'=>$strsort));
+    }
+
+}
