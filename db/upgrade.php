@@ -26,22 +26,25 @@
 defined('MOODLE_INTERNAL') || die;
 
 function xmldb_signoff_upgrade($oldversion) {
-    global $CFG;
+    global $DB;
 
-    // Automatically generated Moodle v3.5.0 release upgrade line.
-    // Put any upgrade step following this.
+    $dbman = $DB->get_manager();
 
-    // Automatically generated Moodle v3.6.0 release upgrade line.
-    // Put any upgrade step following this.
+    // added completionsubmit column
+    if ($oldversion < 2022030501) {
 
-    // Automatically generated Moodle v3.7.0 release upgrade line.
-    // Put any upgrade step following this.
+        $table = new xmldb_table('signoff');
 
-    // Automatically generated Moodle v3.8.0 release upgrade line.
-    // Put any upgrade step following this.
+        // Define field completionsubmit to be added to signoff.
+        $field = new xmldb_field('completionsubmit', XMLDB_TYPE_INTEGER, '1', null, 1, null, 0, 'timemodified');
+        // Conditionally launch add field signoff.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
 
-    // Automatically generated Moodle v3.9.0 release upgrade line.
-    // Put any upgrade step following this.
+        // Quiz savepoint reached.
+        upgrade_mod_savepoint(true, 2022030501, 'signoff');
+    }
 
     return true;
 }

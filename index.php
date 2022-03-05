@@ -25,28 +25,15 @@
  */
 
 require('../../config.php');
-require_once($CFG->dirroot.'/user/renderer.php');
+require_once($CFG->libdir.'/tablelib.php');
 
 $id = required_param('course', PARAM_INT); // course id
 $instance = optional_param('instance', 0, PARAM_INT); // coursemodule
-$page          = optional_param('page', 0, PARAM_INT);   // active page
-$action        = optional_param('action', 0, PARAM_ALPHAEXT);
-$sortitemid    = optional_param('sortitemid', 0, PARAM_ALPHANUM); // sort by which grade item
-
-
-$graderreportsifirst  = optional_param('sifirst', null, PARAM_NOTAGS);
-$graderreportsilast   = optional_param('silast', null, PARAM_NOTAGS);
-
-
-
 
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
 
 require_course_login($course, true);
 $PAGE->set_pagelayout('incourse');
-
-$context = context_course::instance($course->id);
-require_capability('mod/signoff:viewall', $context);
 
 $params = array(
     'context' => context_course::instance($course->id)
@@ -61,97 +48,106 @@ $strname         = get_string('name');
 $strintro        = get_string('moduleintro');
 $strlastmodified = get_string('lastmodified');
 
-$PAGE->set_url('/mod/signoff/index.php', array('id' => $course->id));
+$PAGE->set_url('/mod/signoff/index.php', array('course' => $course->id, 'instance' => $instance));
 $PAGE->set_title($course->shortname.': '.$signoffs);
 $PAGE->set_heading($course->fullname);
 $PAGE->navbar->add($signoffs);
 echo $OUTPUT->header();
 echo $OUTPUT->heading($signoffs);
 
-if (!$sgns = get_all_instances_in_course('signoff', $course)) {
+if (!$activity_instances = get_all_instances_in_course('signoff', $course)) {
     notice(get_string('thereareno', 'moodle', $signoffs), "$CFG->wwwroot/course/view.php?id=$course->id");
     exit;
 }
 
-$usesections = course_format_uses_sections($course->format);
-
-
-$report = new mod_signoff_report($course->id, $context, $page, $sortitemid);
-$numusers = $report->get_numusers(true, true);
-
-// make sure separate group does not prevent view
-if ($report->currentgroup == -2) {
-    echo $OUTPUT->heading(get_string("notingroup"));
-    echo $OUTPUT->footer();
-    exit;
-}
-
-// final grades MUST be loaded after the processing
-$report->load_users();
-echo $report->group_selector;
-
-$firstinitial = isset($SESSION->gradereport['filterfirstname']) ? $SESSION->gradereport['filterfirstname'] : '';
-$lastinitial  = isset($SESSION->gradereport['filtersurname']) ? $SESSION->gradereport['filtersurname'] : '';
-$totalusers = $report->get_numusers(true, false);
-$renderer = $PAGE->get_renderer('core_user');
-echo $renderer->user_search($url, $firstinitial, $lastinitial, $numusers, $totalusers, $report->currentgroupname);
-
-
-$studentsperpage = $report->get_students_per_page();
-// Don't use paging if studentsperpage is empty or 0 at course AND site levels
-if (!empty($studentsperpage)) {
-    echo $OUTPUT->paging_bar($numusers, $report->page, $studentsperpage, $report->pbarurl);
-}
-
-$reporthtml = $report->get_grade_table($displayaverages);
-
-
-
-$table = new html_table();
-$table->attributes['class'] = 'generaltable mod_index';
-
-if ($usesections) {
-    $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname, $strname, $strintro);
-    $table->align = array ('center', 'left', 'left');
-} else {
-    $table->head  = array ($strlastmodified, $strname, $strintro);
-    $table->align = array ('left', 'left', 'left');
-}
-
-$modinfo = get_fast_modinfo($course);
-$currentsection = '';
-foreach ($sgns as $inst) {
-    $cm = $modinfo->cms[$inst->coursemodule];
-    if ($usesections) {
-        $printsection = '';
-        if ($inst->section !== $currentsection) {
-            if ($inst->section) {
-                $printsection = get_section_name($course, $inst->section);
+$table = new flexible_table('signoff_table');
+$table->define_baseurl($PAGE->url);
+$table->define_columns(['section','activity','picture','fullname','completed','signature']);
+$table->define_headers([get_string('section'),get_string('activity'),get_string('pictureofuser'),get_string('fullname'),get_string('completed','signoff'),get_string('signature','signoff')]);
+$table->no_sorting('picture');
+$table->no_sorting('signature');
+$table->sortable(true);
+$table->collapsible(true);
+$table->pageable(true);
+$table->column_class('picture', 'picture');
+$table->column_class('fullname', 'bold');
+$table->column_class('score', 'bold');
+$table->set_attribute('cellspacing', '0');
+$table->set_attribute('id', 'signoffs');
+$table->set_attribute('class', 'generaltable generalbox');
+$table->column_suppress('section');
+$table->column_suppress('activity');
+$table->setup();
+foreach ($activity_instances as $inst) {
+    if ($records = $DB->get_records('signoff_data', ['signoffid' => $inst->id])) {
+        foreach ($records as $record) {
+            $user = get_complete_user_data('id', $record->userid);
+            $picture = $OUTPUT->user_picture($user, array('courseid' => $course->id));
+            $url = new \moodle_url('/user/view.php', array('id' => $record->userid, 'course' => $course->id));
+            $username = \html_writer::link($url, fullname($user));
+            $context = context_module::instance($inst->coursemodule);
+            $signature = '-';
+            if (!empty($record->signature)) {
+                $url = new \moodle_url("/pluginfile.php/{$context->id}/mod_signoff/signature/{$record->id}");
+                // $signature = \html_writer::img($url, get_string('signature','signoff'),['style'=>'max-width:100%']);
+                $signature = \html_writer::link($url, get_string('view_signature','signoff'), ['target'=>'_blank']);
             }
-            if ($currentsection !== '') {
-                $table->data[] = 'hr';
-            }
-            $currentsection = $inst->section;
+
+            $row = [];
+            $row[] = get_section_name($course,$inst->section);
+            $row[] = $inst->label;
+            $row[] = $picture;
+            $row[] = $username;
+            $row[] = userdate($record->completed);
+            $row[] = $signature; 
+
+            $table->add_data($row);
         }
-    } else {
-        $printsection = '<span class="smallinfo">'.userdate($inst->timemodified)."</span>";
     }
-
-    $extra = empty($cm->extra) ? '' : $cm->extra;
-    $icon = '';
-    if (!empty($cm->icon)) {
-        // each signoff has an icon in 2.0
-        $icon = $OUTPUT->pix_icon($cm->icon, get_string('modulename', $cm->modname)) . ' ';
-    }
-
-    $class = $inst->visible ? '' : 'class="dimmed"'; // hidden modules are dimmed
-    $table->data[] = array (
-        $printsection,
-        "<a $class $extra href=\"view.php?id=$cm->id\">".$icon.format_string($inst->name)."</a>",
-        format_module_intro('signoff', $inst, $cm->id));
 }
+$table->finish_output();
 
-echo html_writer::table($table);
+
+
+// // list users under activities inside each section in a nested array
+// foreach ($uniq as $section) {
+//     $activities = [];
+//     $records = [];
+//     foreach ($activity_instances as $instance) {
+//         if ($instance->section == $section) { // activites in this section
+//             $userdata = [];
+//             if ($records = $DB->get_records('signoff_data', ['signoffid' => $instance->id])) {
+//                 foreach ($records as $record) {
+//                     $user = get_complete_user_data('id', $record->userid);
+//                     $url = new \moodle_url('/user/view.php', array('id' => $record->userid, 'course' => $course->id));
+//                     $userdata[] = [
+//                         "userid" => $user->id,
+//                         "link" => \html_writer::link($url, fullname($user)),
+//                         "picture" =>  $OUTPUT->user_picture($user, array('courseid' => $course->id)),
+//                         "completed" => $record->completed,
+//                         "signature" => !empty($record->signature)
+//                     ];
+//                 }
+//             }
+//             $activities[] = [
+//                 "id" => $instance->id,
+//                 "label" => $instance->label,
+//                 "description" => format_text($instance->intro, $instance->introformat),
+//                 "hasusers" => count($userdata) > 0,
+//                 "users" => $userdata
+//             ];
+//         }
+//     }
+//     $data->section[] = [
+//         "name" => get_section_name($course,$section),
+//         "hasactivities" => count($activities) > 0,
+//         "activities" => $activities
+//     ];
+// }
+
+
+
+// // ready to render
+// echo $OUTPUT->render_from_template('mod_signoff/signoffs', $data);
 
 echo $OUTPUT->footer();

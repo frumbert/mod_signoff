@@ -49,11 +49,12 @@ $PAGE->set_url('/mod/signoff/view.php', array('id' => $cm->id));
 $data = new stdClass();
 $data->signoff = $signoff;
 $data->cm = $cm;
+$data->signature = '';
 
 if (signoff_has_submission($USER, $cm)) {
 
 	signoff_start_page($signoff, $cm, $course);
-	signoff_print_info($USER, $cm);
+	signoff_print_info($USER, $cm, $context);
 
 } else {
 

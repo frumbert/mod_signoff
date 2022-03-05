@@ -4,14 +4,15 @@
 
 Notifies (via email) the teachers and optionally the learners when a button is pressed. You can change the text on the button. You would normally also use restriction requirements to ensure this activity is only accessible at the right time.
 
+You can ask the user for a signature. They can sign this using their mouse or finger to draw they signature.
+
 ## Use case
 
 You have a course with multiple assignments and essay-style quizzes that require an assessor to mark only after the user has completed them all. But you don't want to bombard them with multiple notifications every time a learner completes each activity.
 
 ## TODO
 
-- [ ] Implement the ability for the user to add their signature (using https://github.com/szimek/signature_pad).
-- [ ] Fix up the list all page so that it is useful ...
+- [ ] Automatically submit all assignments in the section or course (if supported/not already submitted)
 
 ### Copyright
 

@@ -27,7 +27,6 @@ if (!defined('MOODLE_INTERNAL')) {
 }
 require_once("$CFG->libdir/formslib.php");
 
-
 /**
  * Form which displays fields for splitting forum post to a separate threads.
  *
@@ -42,30 +41,26 @@ class mod_signoff_view_form extends moodleform {
      *
      */
     public function definition() {
-        global $PAGE;
+        global $PAGE, $CFG;
 
         $mform = $this->_form;
 
         $cmid = $this->_customdata->cm->id;
         $button_text = $this->_customdata->signoff->label;
+        $signature = $this->_customdata->signature;
+
+        \MoodleQuickForm::registerElementType(
+            'signature_field',
+            "$CFG->dirroot/mod/signoff/classes/form/signature.php",
+            'mod_signoff_signature_form_element'
+        );
+
+        $mform->addElement('signature_field', 'user_signature', $signature);
+        $mform->setType('user_signature',PARAM_RAW);
 
         $mform->addElement('hidden', 'id', $cmid);
         $mform->setType('id',PARAM_INT);
-
-        // todo: sort out AMD
-        // https://github.com/szimek/signature_pad
-        if (false && $this->_customdata->signoff->show_signature > 0) {
-
-            $mform->addElement('hidden', 'sigdata', '');
-            $mform->setType('sigdata',PARAM_RAW);
-
-            $config = ['paths' => ['signature_pad' => 'https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js']];
-            $requirejs = 'require.config(' . json_encode($config) . ')';
-            $PAGE->requires->js_amd_inline($requirejs);
-            $PAGE->requires->js_call_amd('mod_signoff/signoff','signoff');
-            $mform->addElement('html', get_string('signature_template', 'signoff'));
-        }
-
         $mform->addElement('submit', 'submitbutton', $button_text);
     }
+
 }

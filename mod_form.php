@@ -31,11 +31,14 @@ require_once($CFG->dirroot.'/mod/signoff/locallib.php');
 
 class mod_signoff_mod_form extends moodleform_mod {
     function definition() {
-        global $CFG;
+        // global $COURSE, $DB;
         $mform = $this->_form;
         $yn = [0 => get_string('no'), 1 => get_string('yes')];
 
-        $config = get_config('signoff');
+        // $config = get_config('signoff');
+        // if ($DB->record_exists('signoff', ['course' => $COURSE->id])) {
+        //     \core\notification::warning(get_string('instanceexists', 'signoff'));
+        // }
 
         //-------------------------------------------------------
         $mform->addElement('header', 'general', get_string('general', 'form'));
@@ -81,24 +84,42 @@ class mod_signoff_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
-    function data_preprocessing(&$default_values) {
-        // if (!empty($default_values['displayoptions'])) {
-        //     $displayoptions = unserialize($default_values['displayoptions']);
-        //     if (isset($displayoptions['printintro'])) {
-        //         $default_values['printintro'] = $displayoptions['printintro'];
-        //     }
-        //     if (!empty($displayoptions['popupwidth'])) {
-        //         $default_values['popupwidth'] = $displayoptions['popupwidth'];
-        //     }
-        //     if (!empty($displayoptions['popupheight'])) {
-        //         $default_values['popupheight'] = $displayoptions['popupheight'];
-        //     }
-        // }
-    }
-
     function validation($data, $files) {
         $errors = parent::validation($data, $files);
         return $errors;
+    }
+
+    public function data_postprocessing($data) {
+        parent::data_postprocessing($data);
+        if (!empty($data->completionunlocked)) {
+            // Turn off completion settings if the checkboxes aren't ticked.
+            $autocompletion = !empty($data->completion) &&
+                $data->completion == COMPLETION_TRACKING_AUTOMATIC;
+            if (!$autocompletion || empty($data->completionsubmit)) {
+                $data->completionsubmit = 0;
+            }
+        }
+    }
+
+    /**
+     * Add completion rules to form.
+     * @return array
+     */
+    public function add_completion_rules() {
+        $mform =& $this->_form;
+        $mform->addElement('checkbox', 'completionsubmit', '', get_string('completionsubmit', 'signoff'));
+        // Enable this completion rule by default.
+        $mform->setDefault('completionsubmit', 1);
+        return array('completionsubmit');
+    }
+
+    /**
+     * Enable completion rules
+     * @param stdclass $data
+     * @return array
+     */
+    public function completion_rule_enabled($data) {
+        return !empty($data['completionsubmit']);
     }
 
 }

@@ -28,6 +28,7 @@ $string['modulename'] = 'Sign Off';
 $string['modulename_link'] = 'mod/signoff/view';
 $string['modulename_help'] = 'Sign Off module allows the learner to notify the teacher that the they have completed the set of conditions leading to this modules release, for instance a series of assignments or essay-type quizzes.'; // TODO ' It optionally also allows the user to input their signature.';
 $string['pluginadministration'] = 'Sign Off administration';
+$string['completionsubmit'] = 'Student must submit to this activity to complete it';
 
 $string['modulenameplural'] = 'Sign Offs';
 $string['button_label'] = 'Signoff button text';
@@ -37,7 +38,13 @@ $string['notify_self'] = 'Notify self?';
 $string['notify_teachers'] = 'Notify teacher(s)?';
 $string['show_signature'] = 'Require signature?';
 $string['signature'] = 'Signature';
+$string['view_signature'] = 'View signature';
 $string['feedback'] = '{$a} signed this unit off on {$b}';
+$string['completed'] = 'Completed on';
+$string['signature_label'] = 'Sign here';
+$string['undo'] = 'Undo';
+$string['clear'] = 'Clear';
+$string['instructions'] = 'Use mouse or finger to draw your signature';
 
 // Capabilities
 $string['signoff:addinstance'] = 'Add a new signoff resource';
@@ -48,21 +55,6 @@ $string['messageprovider:emailnotify'] = 'Signoff activity notifications';
 
 $string['self_signedoff'] = 'You submitted this activity on {$a}.';
 $string['view_submissions'] = 'View all submissions';
-
-$string['signature_template'] = '<div id="signature-pad" class="signature-pad">
-    <div class="signature-pad--body">
-      <canvas></canvas>
-    </div>
-    <div class="signature-pad--footer">
-      <div class="description">Sign above</div>
-      <div class="signature-pad--actions">
-        <div>
-          <button type="button" class="button clear" data-action="clear">Clear</button>
-          <button type="button" class="button" data-action="undo">Undo</button>
-        </div>
-      </div>
-    </div>
-  </div>';
 
 $string['notify_subject'] = 'Signoff notification';
 $string['notify_template'] = 'A user has signed off an activity.\n\nUser: {$a->name} \nCourse: {$a->course} \nSection: {$a->section} \nActivity: {$a->activity} \nUrl: {$a->url} \n';

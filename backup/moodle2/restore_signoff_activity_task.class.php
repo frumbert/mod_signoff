@@ -55,7 +55,7 @@ class restore_signoff_activity_task extends restore_activity_task {
     static public function define_decode_contents() {
         $contents = array();
 
-        $contents[] = new restore_decode_content('signoff', array('intro', 'externalurl'), 'signoff');
+        $contents[] = new restore_decode_content('signoff', array('intro'), 'signoff');
 
         return $contents;
     }

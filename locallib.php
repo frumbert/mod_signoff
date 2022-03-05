@@ -66,6 +66,7 @@ function signoff_print_header($rsrc, $cm, $course)
 
     $PAGE->set_title($course->shortname . ': ' . $rsrc->name);
     $PAGE->set_heading($course->fullname);
+   // var_dump
     $PAGE->set_activity_record($rsrc);
     echo $OUTPUT->header();
 }
@@ -110,10 +111,12 @@ function signoff_print_intro($obj, $cm, $course, $ignoresettings=false) {
     }
 }
 
-function signoff_print_info($user, $cm) {
-    global $DB;
+function signoff_print_info($user, $cm, $context) {
+    global $DB,$CFG;
     if ($data = $DB->get_record('signoff_data', array('signoffid' => $cm->instance, 'userid' => $user->id), '*', IGNORE_MISSING)) {
         echo '<p class="alert alert-info">', get_string('self_signedoff', 'signoff', userdate($data->timemodified)), '</p>';
+        //  [wwwroot]/pluginfile.php/[contextid]/[component]/[filearea]/[itemid][filepath][filename]
+        if (!empty($data->signature)) echo "<p><img src='/pluginfile.php/{$context->id}/mod_signoff/signature/{$data->id}'></p>";
     }
 }
 
@@ -125,17 +128,17 @@ function signoff_has_submission($user, $cm) {
 }
 
 function signoff_process_submission($data, $user, $cm) {
-    global $DB, $CFG;
+    global $DB;
 
     $update = signoff_has_submission($user,$cm);
 
-    if (!isset($data->signature)) $data->signature = '';
+    if (!isset($data->user_signature)) $data->user_signature = '';
 
     // record signoff in the database
     if ($update) {
         $rec = $DB->get_record('signoff_data', ['signoffid' => $cm->instance, 'userid' => $user->id], '*', MUST_EXIST);
         $rec->completed = time();
-        $rec->signature = $data->signature;
+        $rec->signature = $data->user_signature;
         $DB->upate_record('signoff_data', $rec);
     } else {
         $rec = new stdClass();
@@ -144,7 +147,7 @@ function signoff_process_submission($data, $user, $cm) {
         $rec->timecreated = time();
         $rec->timemodified = time();
         $rec->completed = time();
-        $rec->signature = $data->signature;
+        $rec->signature = $data->user_signature;
         $DB->insert_record('signoff_data', $rec);
     }
 
@@ -158,7 +161,7 @@ function signoff_process_submission($data, $user, $cm) {
     $link = (new moodle_url('/course/view.php', ['id' => $course->id, 'section' => $section->section]))->out();
     $template = str_replace('\n', PHP_EOL, get_string('notify_template', 'signoff', [
         'name' => fullname($user,true),
-        'course' => format_string($course->fullname, true, array(
+        'course' => format_string($course->shortname, true, array(
             'context' => $coursecontext,
         )),
         'section' => $section->name . '',
@@ -167,6 +170,7 @@ function signoff_process_submission($data, $user, $cm) {
         )),
         'url' => $link
     ]));
+
 
     // create a list of users who will be receiving the notification
     $notify = [];
