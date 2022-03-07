@@ -39,7 +39,8 @@ function signoff_supports($feature)
         case FEATURE_GROUPS:                    return false;
         case FEATURE_GROUPINGS:                 return false;
         case FEATURE_MOD_INTRO:                 return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS:   return false;
+        case FEATURE_COMPLETION_TRACKS_VIEWS:   return true;
+        case FEATURE_COMPLETION_HAS_RULES:      return true;
         case FEATURE_GRADE_HAS_GRADE:           return false;
         case FEATURE_GRADE_OUTCOMES:            return false;
         case FEATURE_BACKUP_MOODLE2:            return true;
@@ -218,7 +219,9 @@ function mod_signoff_pluginfile($course, $cm, $context, $filearea, $args, $force
         $path = $pluginpath.'vendorjs/'.implode('/', $args);
         echo file_get_contents($path);
         die;
+
     } else if ($filearea === 'signature') {
+        // stored in the db in this version - a future release may use the file system
         if ($data = $DB->get_record('signoff_data', array('id' => array_pop($args)), 'signature', IGNORE_MISSING)) {
             if (strpos($data->signature, ';base64,') !== false) {
                 $mime = substr($data->signature, 5, strpos($data->signature, ';base64,') - 5);
@@ -234,4 +237,147 @@ function mod_signoff_pluginfile($course, $cm, $context, $filearea, $args, $force
         die('unsupported file area');
     }
     die;
+}
+
+function remove_signoff_data($rowid) {
+    global $DB;
+    $DB->delete_records('signoff_data', array('id' => $rowid));
+}
+
+/**
+ * Obtains the automatic completion state for this signoff based on any conditions
+ * in scorm settings.
+ *
+ * @param object $course Course
+ * @param object $cm Course-module
+ * @param int $userid User ID
+ * @param bool $type Type of comparison (or/and; can be used as return value if no conditions)
+ * @return bool True if completed, false if not. (If no conditions, then return
+ *   value depends on comparison type)
+ */
+function signoff_get_completion_state($course, $cm, $userid, $type) {
+    global $DB;
+
+    $result = $type;
+
+    // Get signoff.
+    if (!$signoff = $DB->get_record('signoff', array('id' => $cm->instance))) {
+        print_error('cannotfindsignoff');
+    }
+
+    // signature submitted
+    if ($signoff->completionsign == "1") {
+        $record = $DB->get_record('signoff_data',['signoffid' => $signoff->id, 'userid' => $userid]);
+        if ($record && !empty($record->signature)) {
+            return completion_info::aggregate_completion_states($type, $result, true);
+        } else {
+            return completion_info::aggregate_completion_states($type, $result, false);
+        }
+    }
+
+    // record submitted
+    if ($signoff->completionsubmit == "1") {
+        $record = $DB->get_record('signoff_data',['signoffid' => $signoff->id, 'userid' => $userid]);
+        if ($record) {
+            return completion_info::aggregate_completion_states($type, $result, true);
+        } else {
+            return completion_info::aggregate_completion_states($type, $result, false);
+        }
+    }
+
+    return $type;
+}
+
+/**
+ * Sets activity completion state
+ *
+ * @param object $signoff object
+ * @param int $userid User ID
+ * @param int $completionstate Completion state
+ * @param array $grades grades array of users with grades - used when $userid = 0
+ */
+function signoff_set_completion($signoff, $userid, $completionstate = COMPLETION_COMPLETE, $grades = array()) {
+    $course = new stdClass();
+    $course->id = $signoff->course;
+    $completion = new completion_info($course);
+
+    // Check if completion is enabled site-wide, or for the course.
+    if (!$completion->is_enabled()) {
+        return;
+    }
+
+    $cm = get_coursemodule_from_instance('signoff', $signoff->id, $signoff->course);
+    if (empty($cm) || !$completion->is_enabled($cm)) {
+            return;
+    }
+
+    if (empty($userid)) { // We need to get all the relevant users from $grades param.
+        foreach ($grades as $grade) {
+            $completion->update_state($cm, $completionstate, $grade->userid);
+        }
+    } else {
+        $completion->update_state($cm, $completionstate, $userid);
+    }
+}
+
+function signoff_get_coursemodule_info($coursemodule) {
+    global $DB;
+
+    $dbparams = ['id' => $coursemodule->instance];
+    $fields = 'id, name, intro, introformat, notify_self, notify_teacher, completionsubmit, completionsign';
+    if (!$signoff = $DB->get_record('signoff', $dbparams, $fields)) {
+        return false;
+    }
+
+    $result = new cached_cm_info();
+    $result->name = $signoff->name;
+
+    if ($coursemodule->showdescription) {
+        // Convert intro to html. Do not filter cached version, filters run at display time.
+        $result->content = format_module_intro('signoff', $signoff, $coursemodule->id, false);
+    }
+
+    // Populate the custom completion rules as key => value pairs, but only if the completion mode is 'automatic'.
+    if ($coursemodule->completion == COMPLETION_TRACKING_AUTOMATIC) {
+        $result->customdata['customcompletionrules']['completionsubmit'] = $signoff->completionsubmit;
+        $result->customdata['customcompletionrules']['completionsign'] = $signoff->completionsign;
+    }
+
+    // Populate some other values that can be used in calendar or on dashboard.
+    if ($signoff->notify_self) {
+        $result->customdata['notify_self'] = $signoff->notify_self;
+    }
+    if ($signoff->notify_teacher) {
+        $result->customdata['notify_teacher'] = $signoff->notify_teacher;
+    }
+
+    return $result;
+
+}
+
+function mod_signoff_get_completion_active_rule_descriptions($cm) {
+    // Values will be present in cm_info, and we assume these are up to date.
+    if (empty($cm->customdata['customcompletionrules'])
+        || $cm->completion != COMPLETION_TRACKING_AUTOMATIC) {
+        return [];
+    }
+
+    $descriptions = [];
+    foreach ($cm->customdata['customcompletionrules'] as $key => $val) {
+        switch ($key) {
+            case 'completionsubmit':
+                if (!empty($val)) {
+                    $descriptions[] = get_string('completionsubmitdesc', 'signoff', $val);
+                }
+                break;
+            case 'completionreplies':
+                if (!empty($val)) {
+                    $descriptions[] = get_string('completionsigndesc', 'signoff', $val);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    return $descriptions;
 }

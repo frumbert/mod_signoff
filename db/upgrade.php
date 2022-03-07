@@ -36,7 +36,13 @@ function xmldb_signoff_upgrade($oldversion) {
         $table = new xmldb_table('signoff');
 
         // Define field completionsubmit to be added to signoff.
-        $field = new xmldb_field('completionsubmit', XMLDB_TYPE_INTEGER, '1', null, 1, null, 0, 'timemodified');
+        $field = new xmldb_field('completionsubmit', XMLDB_TYPE_INTEGER, '1', null, true, null, 0, 'timemodified');
+        // Conditionally launch add field signoff.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('completionsign', XMLDB_TYPE_INTEGER, '1', null, true, null, 0, 'completionsubmit');
         // Conditionally launch add field signoff.
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);

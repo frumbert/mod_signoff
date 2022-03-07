@@ -6,13 +6,18 @@ Notifies (via email) the teachers and optionally the learners when a button is p
 
 You can ask the user for a signature. They can sign this using their mouse or finger to draw they signature.
 
-## Use case
+## Use cases
 
-You have a course with multiple assignments and essay-style quizzes that require an assessor to mark only after the user has completed them all. But you don't want to bombard them with multiple notifications every time a learner completes each activity.
+1) You have a course with multiple assignments and essay-style quizzes that require an assessor to mark only after the user has completed them all. But you don't want to bombard them with multiple notifications every time a learner completes each activity.
+
+2) You want to take some formal acknowledgement from the user before releasing further content. You can complete the activity after the user signs and submits it, and use activity restrictions to limit further release based on this activities completin status.
 
 ## TODO
 
-- [ ] Automatically submit all assignments in the section or course (if supported/not already submitted)
+- [ ] Automatically submit all assignments in the section or course; can be emulated with activity restrictions
+- [ ] Automatically trim the size of signature image to its minimum dimensions
+- [ ] Use moodle file storage for signatures
+- [ ] Get backup/restore working
 
 ### Copyright
 

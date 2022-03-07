@@ -84,6 +84,21 @@ class mod_signoff_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
+    function get_data() {
+        $data = parent::get_data();
+        if (!$data) {
+            return $data;
+        }
+        if (!empty($data->completionunlocked)) {
+            // Turn off completion settings if the checkboxes aren't ticked
+            $autocompletion = !empty($data->completion) && $data->completion==COMPLETION_TRACKING_AUTOMATIC;
+            if (empty($data->completionpostsenabled) || !$autocompletion) {
+            $data->completionposts = 0;
+            }
+        }
+        return $data;
+    }
+
     function validation($data, $files) {
         $errors = parent::validation($data, $files);
         return $errors;
@@ -92,11 +107,16 @@ class mod_signoff_mod_form extends moodleform_mod {
     public function data_postprocessing($data) {
         parent::data_postprocessing($data);
         if (!empty($data->completionunlocked)) {
+            // if 'show signature' is set to 'no' then $data->completionsign also should be set to 'no'
+            if ($data->show_signature == 0) {
+                $data->completionsign = 0;
+            }
+
             // Turn off completion settings if the checkboxes aren't ticked.
-            $autocompletion = !empty($data->completion) &&
-                $data->completion == COMPLETION_TRACKING_AUTOMATIC;
-            if (!$autocompletion || empty($data->completionsubmit)) {
+            $autocompletion = !empty($data->completion) && $data->completion == COMPLETION_TRACKING_AUTOMATIC;
+            if (!$autocompletion || (empty($data->completionsubmit) && empty($data->completionsign))) {
                 $data->completionsubmit = 0;
+                $data->completionsign = 0;
             }
         }
     }
@@ -108,9 +128,12 @@ class mod_signoff_mod_form extends moodleform_mod {
     public function add_completion_rules() {
         $mform =& $this->_form;
         $mform->addElement('checkbox', 'completionsubmit', '', get_string('completionsubmit', 'signoff'));
-        // Enable this completion rule by default.
-        $mform->setDefault('completionsubmit', 1);
-        return array('completionsubmit');
+        $mform->setDefault('completionsubmit', 0);
+
+        $mform->addElement('checkbox', 'completionsign', '', get_string('completionsign', 'signoff'));
+        $mform->setDefault('completionsign', 0);
+
+        return array('completionsubmit', 'completionsign');
     }
 
     /**
@@ -119,7 +142,9 @@ class mod_signoff_mod_form extends moodleform_mod {
      * @return array
      */
     public function completion_rule_enabled($data) {
-        return !empty($data['completionsubmit']);
+        $mustsubmit = !empty($data['completionsubmit']);
+        $mustsign = !empty($data['completionsign']); 
+        return $mustsubmit || $mustsign;
     }
 
 }

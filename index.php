@@ -26,14 +26,27 @@
 
 require('../../config.php');
 require_once($CFG->libdir.'/tablelib.php');
+require_once('lib.php');
 
 $id = required_param('course', PARAM_INT); // course id
 $instance = optional_param('instance', 0, PARAM_INT); // coursemodule
-
+$remove = optional_param('remove', 0, PARAM_INT); // record to delete
+$signoff = get_string('modulename', 'signoff');
+$signoffs = get_string('modulenameplural', 'signoff');
+$strname = get_string('name');
+$strintro = get_string('moduleintro');
+$strlastmodified = get_string('lastmodified');
 $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
 
 require_course_login($course, true);
 $PAGE->set_pagelayout('incourse');
+$PAGE->set_url('/mod/signoff/index.php', array('course' => $course->id, 'instance' => $instance));
+$PAGE->set_title($course->shortname.': '.$signoffs);
+$PAGE->set_heading($course->fullname);
+$PAGE->navbar->add($signoffs);
+
+$contextmodule = context_module::instance($instance);
+require_capability('mod/signoff:viewall', $contextmodule);
 
 $params = array(
     'context' => context_course::instance($course->id)
@@ -42,16 +55,11 @@ $event = \mod_signoff\event\course_module_instance_list_viewed::create($params);
 $event->add_record_snapshot('course', $course);
 $event->trigger();
 
-$signoff       = get_string('modulename', 'signoff');
-$signoffs      = get_string('modulenameplural', 'signoff');
-$strname         = get_string('name');
-$strintro        = get_string('moduleintro');
-$strlastmodified = get_string('lastmodified');
+// remove any requested records and update completion status
+if ($remove > 0) {
+    remove_signoff_data($remove);
+}
 
-$PAGE->set_url('/mod/signoff/index.php', array('course' => $course->id, 'instance' => $instance));
-$PAGE->set_title($course->shortname.': '.$signoffs);
-$PAGE->set_heading($course->fullname);
-$PAGE->navbar->add($signoffs);
 echo $OUTPUT->header();
 echo $OUTPUT->heading($signoffs);
 
@@ -62,10 +70,11 @@ if (!$activity_instances = get_all_instances_in_course('signoff', $course)) {
 
 $table = new flexible_table('signoff_table');
 $table->define_baseurl($PAGE->url);
-$table->define_columns(['section','activity','picture','fullname','completed','signature']);
-$table->define_headers([get_string('section'),get_string('activity'),get_string('pictureofuser'),get_string('fullname'),get_string('completed','signoff'),get_string('signature','signoff')]);
+$table->define_columns(['section','activity','picture','fullname','completed','signature','action']);
+$table->define_headers([get_string('section'),get_string('activity'),get_string('pictureofuser'),get_string('fullname'),get_string('completed','signoff'),get_string('signature','signoff'),get_string('action')]);
 $table->no_sorting('picture');
 $table->no_sorting('signature');
+$table->no_sorting('action');
 $table->sortable(true);
 $table->collapsible(true);
 $table->pageable(true);
@@ -92,14 +101,17 @@ foreach ($activity_instances as $inst) {
                 // $signature = \html_writer::img($url, get_string('signature','signoff'),['style'=>'max-width:100%']);
                 $signature = \html_writer::link($url, get_string('view_signature','signoff'), ['target'=>'_blank']);
             }
+            $url = new \moodle_url('/mod/signoff/index.php', array('remove' => $record->id, 'course' => $course->id, 'instance' => $instance));
+            $action = \html_writer::link($url, get_string('remove','signoff'));
 
             $row = [];
             $row[] = get_section_name($course,$inst->section);
-            $row[] = $inst->label;
+            $row[] = $inst->name;
             $row[] = $picture;
             $row[] = $username;
             $row[] = userdate($record->completed);
-            $row[] = $signature; 
+            $row[] = $signature;
+            $row[] = $action;
 
             $table->add_data($row);
         }

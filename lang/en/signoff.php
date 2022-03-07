@@ -28,7 +28,8 @@ $string['modulename'] = 'Sign Off';
 $string['modulename_link'] = 'mod/signoff/view';
 $string['modulename_help'] = 'Sign Off module allows the learner to notify the teacher that the they have completed the set of conditions leading to this modules release, for instance a series of assignments or essay-type quizzes.'; // TODO ' It optionally also allows the user to input their signature.';
 $string['pluginadministration'] = 'Sign Off administration';
-$string['completionsubmit'] = 'Student must submit to this activity to complete it';
+$string['completionsubmit'] = 'Student must submit this activity to complete it';
+$string['completionsign'] = 'Student must sign and submit this activity to complete it';
 
 $string['modulenameplural'] = 'Sign Offs';
 $string['button_label'] = 'Signoff button text';
@@ -36,7 +37,7 @@ $string['button_label_default'] = 'Sign off unit';
 
 $string['notify_self'] = 'Notify self?';
 $string['notify_teachers'] = 'Notify teacher(s)?';
-$string['show_signature'] = 'Require signature?';
+$string['show_signature'] = 'Show signature?';
 $string['signature'] = 'Signature';
 $string['view_signature'] = 'View signature';
 $string['feedback'] = '{$a} signed this unit off on {$b}';
@@ -45,6 +46,10 @@ $string['signature_label'] = 'Sign here';
 $string['undo'] = 'Undo';
 $string['clear'] = 'Clear';
 $string['instructions'] = 'Use mouse or finger to draw your signature';
+
+$string['completionsubmitdesc'] = 'Must be submitted';
+$string['completionsigndesc'] = 'Must be signed and submitted';
+$string['remove'] = 'Remove record';
 
 // Capabilities
 $string['signoff:addinstance'] = 'Add a new signoff resource';

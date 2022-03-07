@@ -36,17 +36,24 @@ class backup_signoff_activity_structure_step extends backup_activity_structure_s
         //the shared URL module stores no user info
 
         // Define each element separated
-        $url = new backup_nested_element('signoff', array('id'), array(
-            'activity', 'name', 'intro', 'introformat', 'notify_self', 'notify_teacher', 'show_signature', 'label', 'timemodified'));
+        $signoff = new backup_nested_element('signoff', array('id'), array(
+                'activity', 'name', 'intro', 'introformat',
+                'notify_self', 'notify_teacher', 'show_signature',
+                'label', 'timemodified', 'completionsubmit', 'completionsign'
+        ));
+        $signoff->set_source_table('signoff', array('id' => backup::VAR_ACTIVITYID));
+
+        $signoffdata = new backup_nested_element('signoff_data', array('id'), array(
+            'userid', 'signoffid', 'completed', 'signature', 'timecreated', 'timemodified'
+        ));
 
         // Define sources
-        $url->set_source_table('signoff', array('id' => backup::VAR_ACTIVITYID));
 
         // Define file annotations
-        $url->annotate_files('mod_signoff', 'intro', null); // This file area hasn't itemid
+        $signoff->annotate_files('mod_signoff', 'intro', null); // This file area hasn't itemid
 
         // Return the root element (url), wrapped into standard activity structure
-        return $this->prepare_activity_structure($url);
+        return $this->prepare_activity_structure($signoff);
 
     }
 }

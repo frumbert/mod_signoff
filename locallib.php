@@ -25,9 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once("$CFG->libdir/filelib.php");
-require_once("$CFG->libdir/resourcelib.php");
-require_once("$CFG->dirroot/mod/signoff/lib.php");
+require_once($CFG->libdir.'/filelib.php');
+require_once($CFG->libdir.'/resourcelib.php');
+require_once($CFG->dirroot.'/mod/signoff/lib.php');
+require_once($CFG->dirroot.'/lib/completionlib.php');
 
 /**
  * Unicode encoding helper callback
@@ -116,7 +117,7 @@ function signoff_print_info($user, $cm, $context) {
     if ($data = $DB->get_record('signoff_data', array('signoffid' => $cm->instance, 'userid' => $user->id), '*', IGNORE_MISSING)) {
         echo '<p class="alert alert-info">', get_string('self_signedoff', 'signoff', userdate($data->timemodified)), '</p>';
         //  [wwwroot]/pluginfile.php/[contextid]/[component]/[filearea]/[itemid][filepath][filename]
-        if (!empty($data->signature)) echo "<p><img src='/pluginfile.php/{$context->id}/mod_signoff/signature/{$data->id}'></p>";
+        if (!empty($data->signature)) echo "<p><img src='/pluginfile.php/{$context->id}/mod_signoff/signature/{$data->id}' class='mod-signoff--signature'></p>";
     }
 }
 
@@ -152,7 +153,6 @@ function signoff_process_submission($data, $user, $cm) {
     }
 
     // grab contextual information for notification
-    $sectionid = 1;
     $signoff = $DB->get_record('signoff', array('id' => $cm->instance), '*', MUST_EXIST);
     $modulecontext = \context_module::instance($cm->id);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
@@ -172,6 +172,18 @@ function signoff_process_submission($data, $user, $cm) {
     ]));
 
 
+    // process completions
+    $completion = new completion_info($course);
+    if ($completion->is_enabled($cm)) {
+        $mustsubmit = ($signoff->completionsubmit > 0);
+        $mustsign = ($signoff->completionsign > 0);
+        if ($mustsubmit || ($mustsign && !empty($data->user_signature))) {
+            $completion->update_state($cm, COMPLETION_COMPLETE, $user->id);
+        } else if ($mustsign && empty($data->user_signature)) {
+            $completion->update_state($cm, COMPLETION_INCOMPLETE, $user->id);
+        }
+    }
+
     // create a list of users who will be receiving the notification
     $notify = [];
 
@@ -190,30 +202,7 @@ function signoff_process_submission($data, $user, $cm) {
     // send the notification
     // see https://docs.moodle.org/dev/Message_API
     foreach($notify as $to) {
-
-        // not sure how to set up the capability to send email to anyone through messaging, so directly email user;
         email_to_user($to, core_user::get_noreply_user(), get_string('notify_subject', 'signoff'), $template);
-
-        // Attempt to send msg from a provider mod_signoff/emailnotify that is inactive or not allowed for the user id=6
-        //    line 224 of /lib/messagelib.php: call to debugging()
-        //    line 198 of /mod/signoff/locallib.php: call to message_send()
-        //    line 74 of /mod/signoff/view.php: call to signoff_process_submission()
-
-        // $message = new \core\message\message();
-        // $message->courseid          = $cm->course;
-        // $message->notification      = 1;
-        // $message->component         = 'mod_signoff';
-        // $message->name              = 'emailnotify';
-        // $message->userfrom          = core_user::get_noreply_user();
-        // $message->userto            = $to;
-        // $message->subject           = get_string('notify_subject', 'signoff');
-        // $message->fullmessage       = $template;
-        // $message->fullmessageformat = FORMAT_PLAIN;
-        // $message->fullmessagehtml   = ''; // markdown_to_html($template);
-        // $message->smallmessage      = ''; // get_string('notify_subject', 'signoff');
-        // $message->contexturlname    = 'Signoff';
-        // $message->contexturl        = (string)new moodle_url('/mod/signoff/view.php', array('id'=>$cm->instance));
-        // message_send($message);
     }
 
 }
