@@ -119,7 +119,7 @@ foreach ($activity_instances as $inst) {
 }
 $table->finish_output();
 
-if (has_capability('mod/signoff:viewall', $context)) {
+if (has_capability('mod/signoff:viewall', $contextmodule)) {
     $url = new moodle_url('/mod/signoff/view.php', ['id' => $instance]);
     echo html_writer::tag('p', html_writer::link($url, get_string('back')));
 }
