@@ -81,7 +81,7 @@ if (signoff_has_submission($USER, $cm)) {
 }
 
 if (has_capability('mod/signoff:viewall', $context)) {
-    $url = new moodle_url('/mod/signoff/index.php', ['course' => $cm->course, 'instance' => $cm->instance]);
+    $url = new moodle_url('/mod/signoff/index.php', ['course' => $cm->course, 'instance' => $id]);
     echo '<p>', html_writer::link($url, get_string('view_submissions','signoff')), '<p>';
 }
 

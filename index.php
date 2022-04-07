@@ -119,7 +119,10 @@ foreach ($activity_instances as $inst) {
 }
 $table->finish_output();
 
-
+if (has_capability('mod/signoff:viewall', $context)) {
+    $url = new moodle_url('/mod/signoff/view.php', ['id' => $instance]);
+    echo html_writer::tag('p', html_writer::link($url, get_string('back')));
+}
 
 // // list users under activities inside each section in a nested array
 // foreach ($uniq as $section) {
