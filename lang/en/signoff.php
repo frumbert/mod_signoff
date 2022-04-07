@@ -49,7 +49,12 @@ $string['instructions'] = 'Use mouse or finger to draw your signature';
 
 $string['completionsubmitdesc'] = 'Must be submitted';
 $string['completionsigndesc'] = 'Must be signed and submitted';
+$string['requiresubmit'] = 'Requires submissions';
+$string['requiresubmit_help'] = 'When Yes, Assignments and Quizzes in the current section must all be submitted before this activity can be signed off.';
+
 $string['remove'] = 'Remove record';
+
+$string['unsubmitted'] = 'The following assignments and quizzes need to be submitted before you can sign this unit off.';
 
 // Capabilities
 $string['signoff:addinstance'] = 'Add a new signoff resource';

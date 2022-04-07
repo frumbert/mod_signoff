@@ -63,8 +63,11 @@ if (signoff_has_submission($USER, $cm)) {
 	if ($mform->is_cancelled()) {
 		// leave as is
 		signoff_start_page($signoff, $cm, $course);
-		$mform->set_data($data);
-		$mform->display();
+		$ready = signoff_render_unsubmitted($USER, $cm, $signoff->requiresubmit);
+		if ($ready) {
+			$mform->set_data($data);
+			$mform->display();
+		}
 
 	} else if ($submitted = $mform->get_data()) {
 		// process
@@ -74,8 +77,11 @@ if (signoff_has_submission($USER, $cm)) {
 	} else {
 
 		signoff_start_page($signoff, $cm, $course);
-		$mform->set_data($data);
-		$mform->display();
+		$ready = signoff_render_unsubmitted($USER, $cm, $signoff->requiresubmit);
+		if ($ready) {
+			$mform->set_data($data);
+			$mform->display();
+		}
 	}
 
 }

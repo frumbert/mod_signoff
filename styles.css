@@ -24,6 +24,12 @@
   padding: 16px;
 }
 
+#unsubmitted.generalbox {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e8e8e8;
+}
+
 /* .signature-pad::before,
 .signature-pad::after {
   position: absolute;

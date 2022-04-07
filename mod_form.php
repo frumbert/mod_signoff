@@ -71,6 +71,12 @@ class mod_signoff_mod_form extends moodleform_mod {
         $mform->setDefault('show_signature', 0);
         $mform->setAdvanced('show_signature');
 
+        // require submit?
+        $mform->addElement('select', 'requiresubmit', get_string('requiresubmit', 'signoff'), $yn);
+        $mform->setDefault('requiresubmit', 0);
+        $mform->setAdvanced('requiresubmit');
+        $mform->addHelpButton('requiresubmit',  'requiresubmit',  'signoff');
+
         $this->standard_intro_elements();
         $element = $mform->getElement('introeditor');
         $attributes = $element->getAttributes();

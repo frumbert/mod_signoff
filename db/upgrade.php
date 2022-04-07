@@ -47,9 +47,20 @@ function xmldb_signoff_upgrade($oldversion) {
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-
-        // Quiz savepoint reached.
         upgrade_mod_savepoint(true, 2022030501, 'signoff');
+    }
+
+    if ($oldversion < 2022040700) {
+
+        $table = new xmldb_table('signoff');
+
+        $field = new xmldb_field('requiresubmit', XMLDB_TYPE_INTEGER, '1', null, true, null, 0, 'show_signature');
+        // Conditionally launch add field signoff.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_mod_savepoint(true, 2022040700, 'signoff');
+
     }
 
     return true;

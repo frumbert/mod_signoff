@@ -41,7 +41,7 @@ function signoff_filter_callback($matches) {
 }
 
 function signoff_start_page($instance, $cm, $course) {
-    global $OUTPUT;
+    global $OUTPUT, $USER;
 
     // standard headers
     signoff_print_header($instance, $cm, $course);
@@ -126,6 +126,56 @@ function signoff_has_submission($user, $cm) {
 
     // TODO check if completed > 0
     return $DB->record_exists('signoff_data', array('signoffid' => $cm->instance, 'userid' => $user->id));
+}
+
+// List of content (assignments and quizzes in the current section) that hasn't yet been completed
+// return false if links were found
+function signoff_render_unsubmitted($user,$cm, $requiresubmit) {
+global $OUTPUT;
+    if ($requiresubmit == '1') {
+        $links = signoff_get_unsubmitted_work_in_section($user, $cm);
+        if (!empty($links) ) {
+            echo $OUTPUT->box_start('generalbox', 'unsubmitted');
+            echo '<p>', get_string('unsubmitted', 'signoff'), '</p>';
+            echo '<ul>';
+            foreach ($links as $link) {
+                echo '<li>', $link, '</li>';
+            }
+            echo '</ul>';
+            echo $OUTPUT->box_end();
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// find quizzes and assignments in the current section that have not been submitted and return a linked array of these items
+function signoff_get_unsubmitted_work_in_section($user, $cm) {
+    global $DB;
+    $modinfo = get_fast_modinfo($cm->course, $user->id);
+    $mods = $modinfo->get_cms();
+    $links = [];
+    foreach ($mods as $mod) {
+        if ($mod->section == $cm->section) {
+            $submitted = true;
+            switch ($mod->modname) {
+                case 'assign':
+                    $submitted = $DB->record_exists('assign_submission', ['assignment' => $mod->instance, 'userid' => $user->id, 'status' => 'submitted']);
+                break;
+
+                case 'quiz':
+                    $submitted = $DB->record_exists('quiz_attempts', ['quiz' => $mod->instance, 'userid' => $user->id, 'state' => 'finished']);
+                break;
+            }
+
+            if (!$submitted) {
+                $url = new moodle_url("/mod/{$mod->modname}/view.php", ['id' => $mod->instance]);
+                $links[] = html_writer::link($url, $mod->name, ['class' => 'mod-signoff--link']);
+            }
+        }
+    }
+    return $links;
 }
 
 function signoff_process_submission($data, $user, $cm) {
