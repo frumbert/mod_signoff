@@ -38,7 +38,7 @@ class backup_signoff_activity_structure_step extends backup_activity_structure_s
         // Define each element separated
         $signoff = new backup_nested_element('signoff', array('id'), array(
                 'activity', 'name', 'intro', 'introformat',
-                'notify_self', 'notify_teacher', 'show_signature',
+                'notify_self', 'notify_teacher', 'show_signature', 'requiresubmit',
                 'label', 'timemodified', 'completionsubmit', 'completionsign'
         ));
         $signoff->set_source_table('signoff', array('id' => backup::VAR_ACTIVITYID));
