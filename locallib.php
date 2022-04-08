@@ -133,15 +133,11 @@ function signoff_has_submission($user, $cm) {
 function signoff_render_unsubmitted($user,$cm, $requiresubmit) {
 global $OUTPUT;
     if ($requiresubmit == '1') {
-        $links = signoff_get_unsubmitted_work_in_section($user, $cm);
-        if (!empty($links) ) {
+        $data = signoff_get_unsubmitted_work_in_section($user, $cm);
+        if (!empty($data[0]) ) {
             echo $OUTPUT->box_start('generalbox', 'unsubmitted');
-            echo '<p>', get_string('unsubmitted', 'signoff'), '</p>';
-            echo '<ul>';
-            foreach ($links as $link) {
-                echo '<li>', $link, '</li>';
-            }
-            echo '</ul>';
+            echo html_writer::tag('p', get_string('unsubmitted', 'signoff'));
+            echo $OUTPUT->list_block_contents($data[1], $data[0]);
             echo $OUTPUT->box_end();
             return false;
         }
@@ -152,10 +148,11 @@ global $OUTPUT;
 
 // find quizzes and assignments in the current section that have not been submitted and return a linked array of these items
 function signoff_get_unsubmitted_work_in_section($user, $cm) {
-    global $DB;
+    global $DB, $OUTPUT;
     $modinfo = get_fast_modinfo($cm->course, $user->id);
     $mods = $modinfo->get_cms();
     $links = [];
+    $icons = [];
     foreach ($mods as $mod) {
         if ($mod->section == $cm->section) {
             $submitted = true;
@@ -172,10 +169,11 @@ function signoff_get_unsubmitted_work_in_section($user, $cm) {
             if (!$submitted) {
                 $url = new moodle_url("/mod/{$mod->modname}/view.php", ['id' => $mod->instance]);
                 $links[] = html_writer::link($url, $mod->name, ['class' => 'mod-signoff--link']);
+                $icons[] = $OUTPUT->pix_icon('icon', '', $mod->modname, ['class' => 'mod-signoff--icon']);
             }
         }
     }
-    return $links;
+    return [$links,$icons];
 }
 
 function signoff_process_submission($data, $user, $cm) {

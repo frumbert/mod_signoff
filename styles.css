@@ -30,6 +30,10 @@
   border: 1px solid #e8e8e8;
 }
 
+#unsubmitted .unlist > li > .column {
+  display: inline-block;
+}
+
 /* .signature-pad::before,
 .signature-pad::after {
   position: absolute;
